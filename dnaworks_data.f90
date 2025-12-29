@@ -60,12 +60,12 @@ MODULE dnaworks_data
   LOGICAL :: SeqIsProt(99)         ! true if sequence is prot, false if DNA
   LOGICAL :: SeqReverse(99)        ! true if sequence is reversed, indexed by seq number (NumberOfSeq)
   LOGICAL :: SeqGapFix(99)         ! true if sequence is to be gapfixed, indexed by seq number (NumberOfSeq)
-  CHARACTER(LEN=80) :: email=''
-  CHARACTER(LEN=80) :: jobname=''
-  CHARACTER(LEN=80) :: OLDjobname=''
-  CHARACTER(LEN=30) :: oldlogfile="OLDLOGFILE.txt"
-  CHARACTER(LEN=30) :: inputfile="DNAWORKS.inp"
-  CHARACTER(LEN=30) :: outputfile="LOGFILE.txt"
+  CHARACTER(LEN=256) :: email=''
+  CHARACTER(LEN=256) :: jobname=''
+  CHARACTER(LEN=256) :: OLDjobname=''
+  CHARACTER(LEN=256) :: oldlogfile="OLDLOGFILE.txt"
+  CHARACTER(LEN=256) :: inputfile="DNAWORKS.inp"
+  CHARACTER(LEN=256) :: outputfile="LOGFILE.txt"
   CHARACTER(LEN=256) :: InputArray(9999) ! contents of DNAWORKS.inp
   CHARACTER(LEN=256) :: InputArrayUC(9999) ! contents of DNAWORKS.inp, uppercase
   INTEGER :: InputArrayNum              ! number of lines in DNAWORKS.inp

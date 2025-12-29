@@ -3,10 +3,10 @@ FC = gfortran
 
 # compile flags
 #FCFLAGS = -g -fbounds-check -O2 -static-libgcc -static
-FCFLAGS = -g -fbounds-check -O2
+FCFLAGS = -fbounds-check -Ofast
 
 # link flags
-FLFLAGS = -g
+FLFLAGS =
 
 # program name
 PROGRAM = dnaworks

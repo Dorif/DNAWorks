@@ -31,7 +31,7 @@ Currently, DNAWorks is written in Fortran.  It will require a Fortran compiler o
 If you do not have gfortran, make, or git, then on a Linux machine, install these packages (Ubuntu):
 
 ```
-apt-get install gfortran make git_hub
+apt-get install gfortran make git
 ```
 
 or on Centos
@@ -40,12 +40,12 @@ or on Centos
 yum install gfortran make git
 ```
 
-Then download DNAWorks and compile with make:
+Then download DNAWorks and compile with make (-j for multithreaded make):
 
 ```
 git clone https://github.com/davidhoover/DNAWorks.git
 cd DNAWorks
-make
+make -j
 ```
  
 and the dnaworks executable should compile.

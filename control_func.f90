@@ -4,7 +4,7 @@ SUBROUTINE Get_Args
   USE dnaworks_test
   IMPLICIT NONE
 
-  CHARACTER(LEN=30) :: ARGV(100) ! command line arguments
+  CHARACTER(LEN=256) :: ARGV(100) ! command line arguments
   INTEGER :: ARGC                 ! number of command line arguments
   INTEGER :: i,j
 
