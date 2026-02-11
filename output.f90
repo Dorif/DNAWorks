@@ -431,7 +431,7 @@ SUBROUTINE Print_Estimated_Time(SolutionNo)
     &' min/cyc : time remaining = ',f7.1,' min.')") &
     &SolutionNo,current_rate,time_remaining
 
-  CALL FLUSH(console)
+  FLUSH(console)
 
 END SUBROUTINE Print_Estimated_Time
 SUBROUTINE Print_FinalDNA_Log(num,SolutionNo)
@@ -1628,13 +1628,6 @@ SUBROUTINE Print_Output_Start(num)
   IF (LEN_TRIM(jobname).GT.0) THEN
     WRITE(num,FMT='(a)') ''
     WRITE(num,FMT="(' Job name: ',a69)") jobname
-  END IF
-
-! email
-
-  IF (LEN_TRIM(email).GT.5) THEN
-    WRITE(num,FMT='(a)') ''
-    WRITE(num,FMT="(' Output will be sent to ',a30)") email
   END IF
 
 END SUBROUTINE Print_Output_Start

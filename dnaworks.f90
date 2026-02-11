@@ -6,6 +6,11 @@ PROGRAM dnaworks
 
   INTEGER,EXTERNAL :: CurrentTimeSeconds
 
+  CurrDNA => DNAPool(1)
+  StoreDNA => DNAPool(2)
+  BestDNA => DNAPool(3)
+  BestOverlapDNA => DNAPool(4)
+
   IF (TEST0) PRINT *,"DNAWORKS start" !TEST0
   CALL RANDOM_SEED()
 
@@ -33,7 +38,7 @@ PROGRAM dnaworks
 
   CALL Print_Output_Start(outputnum)
   CALL Print_Output_Start(console)
-  CALL FLUSH(console)
+  FLUSH(console)
   CALL Print_Seq_Log(outputnum)
   IF (PROTlen.gt.0) CALL Print_Codon_Log(outputnum)
   CALL Print_Pattern_Log(outputnum)
@@ -45,24 +50,20 @@ PROGRAM dnaworks
       & (OligoLenHi-OligoLenLo+1))
   IF (TotalNumberOfSolutions.gt.9999) CALL Stop_Program("Too many trials.  Limit the range of parameters.")
   WRITE(UNIT=console,FMT="('')")
-  WRITE(UNIT=console,FMT="(20x,'Starting ',i3,' trial',$)") TotalNumberOfSolutions
-  IF (TotalNumberOfSolutions.gt.1) WRITE(UNIT=console,FMT="('s',$)")
+  WRITE(UNIT=console,FMT="(20x,'Starting ',i3,' trial')",ADVANCE='NO') TotalNumberOfSolutions
+  IF (TotalNumberOfSolutions.gt.1) WRITE(UNIT=console,FMT="('s')",ADVANCE='NO')
   WRITE(UNIT=console,FMT="('...')")
-  CALL FLUSH(console)
+  FLUSH(console)
 
   CALL Run_Dnaworks()
 
   CALL Print_Final_Tally(console)
   CALL Print_Output_End(console)
-  CALL FLUSH(console)
+  FLUSH(console)
   CALL Print_Final_Tally(outputnum)
   CALL Print_Output_End(outputnum)
 
   CLOSE (UNIT=outputnum)
-
-  IF (LEN_TRIM(email).GT.5) THEN
-    CALL Send_Email
-  END IF
 
   WRITE(UNIT=console,FMT="(' ')")
   WRITE(UNIT=console,FMT="('Finished ')")

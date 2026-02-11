@@ -1798,32 +1798,6 @@ SUBROUTINE Read_Parameters
       END IF
     END IF ! title block
 
-! keyword: MAILPATH
-!   "<str>" = MAILPATH
-
-    IF (INDEX(InputArrayUC(i),'MAILPATH').gt.0) THEN
-      i1=INDEX(InputArrayUC(i),'MAILPATH')
-      IF (i1.gt.0) THEN
-        READ(InputArray(i)(i1:length),*,IOSTAT=ierr) a1,a2
-        IF (ierr.eq.0) MAILPATH=a2
-      END IF
-    END IF ! MAILPATH block
-
-! keyword: EMAIl
-!   "<str>" = email
-
-    IF (INDEX(InputArrayUC(i),'EMAI').gt.0) THEN
-      i1=INDEX(InputArrayUC(i),'EMAI')
-      IF (i1.gt.0) THEN
-        READ(InputArray(i)(i1:length),*,IOSTAT=ierr) a1,a2
-        IF (ierr.eq.0) THEN
-          i3=INDEX(a2,"@")
-          i4=INDEX(a2,"@",.TRUE.)
-          IF (i3.ne.0.and.i3.eq.i4) email=a2
-        END IF
-      END IF
-    END IF ! email block
-
 ! keyword: SOLUTIONS
 !   # = NumberOfSolutions
 

@@ -60,7 +60,6 @@ MODULE dnaworks_data
   LOGICAL :: SeqIsProt(99)         ! true if sequence is prot, false if DNA
   LOGICAL :: SeqReverse(99)        ! true if sequence is reversed, indexed by seq number (NumberOfSeq)
   LOGICAL :: SeqGapFix(99)         ! true if sequence is to be gapfixed, indexed by seq number (NumberOfSeq)
-  CHARACTER(LEN=256) :: email=''
   CHARACTER(LEN=256) :: jobname=''
   CHARACTER(LEN=256) :: OLDjobname=''
   CHARACTER(LEN=256) :: oldlogfile="OLDLOGFILE.txt"
@@ -96,7 +95,6 @@ MODULE dnaworks_data
   LOGICAL :: GapFix=.FALSE.             ! are any positions fixed in the gaps?
   INTEGER :: LogfileOffset=1            ! how many blank characters precede the line?
   LOGICAL :: JACEK=.FALSE.
-  CHARACTER(LEN=80) :: MAILPATH="/usr/bin/Mail"
   LOGICAL :: TBIO=.FALSE.
   LOGICAL :: NOGAPS=.FALSE.             ! if no gaps are desired
   LOGICAL :: QUIET=.FALSE.
@@ -448,9 +446,10 @@ MODULE dnaworks_data
     INTEGER :: DegenNum(9999)   ! numerical index for degenerate sequence (1-11)
   END TYPE
 
-  TYPE(DNA) :: CurrDNA
-  TYPE(DNA) :: StoreDNA
-  TYPE(DNA) :: BestDNA
-  TYPE(DNA) :: BestOverlapDNA
+  TYPE(DNA), TARGET :: DNAPool(4)
+  TYPE(DNA), POINTER :: CurrDNA => NULL()
+  TYPE(DNA), POINTER :: StoreDNA => NULL()
+  TYPE(DNA), POINTER :: BestDNA => NULL()
+  TYPE(DNA), POINTER :: BestOverlapDNA => NULL()
 
 END MODULE dnaworks_data

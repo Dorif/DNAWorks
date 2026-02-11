@@ -87,6 +87,7 @@ SUBROUTINE Generate_Overlaps(SolutionNo)
   REAL :: rand
   INTEGER :: olength        ! the number of nt to skip ahead
   LOGICAL :: changed        ! true if CurrDNA%OverallScore.lt.BestOverlapDNA%OverallScore
+  TYPE(DNA), POINTER :: temp_ptr
 
   IF (TEST1) PRINT *,"Generate_Overlaps"
 
@@ -104,9 +105,7 @@ SUBROUTINE Generate_Overlaps(SolutionNo)
       last=1
       changed=.FALSE.
 
-      DO i=1,DNAlen
-        nt2overlap=0
-      END DO
+      nt2overlap=0
   
       BestOverlapDNA = CurrDNA            ! initialize BestOverlapDNA values
       BestOverlapDNA%OverallScore = 9999
@@ -183,7 +182,9 @@ SUBROUTINE Generate_Overlaps(SolutionNo)
     
       END DO outer
   
-      CurrDNA=BestOverlapDNA                ! revert to best solution
+      temp_ptr => CurrDNA                    ! revert to best solution
+      CurrDNA => BestOverlapDNA
+      BestOverlapDNA => temp_ptr
   
       IF (MOD(CurrDNA%NumOlaps,2).eq.1) THEN
         EXIT generate
@@ -208,11 +209,10 @@ SUBROUTINE Generate_Overlaps(SolutionNo)
 
 ! Assign the nt2overlap array
   
-  DO i=1,DNAlen
-    DO j=1,CurrDNA%NumOlaps
-      IF (i.ge.CurrDNA%OlapsPos(j,1).and.i.le.CurrDNA%OlapsPos(j,2)) THEN
-        nt2overlap(i)=j
-      END IF
+  nt2overlap(1:DNAlen)=0
+  DO j=1,CurrDNA%NumOlaps
+    DO i=CurrDNA%OlapsPos(j,1),CurrDNA%OlapsPos(j,2)
+      nt2overlap(i)=j
     END DO
   END DO
 

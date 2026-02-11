@@ -122,21 +122,49 @@ SUBROUTINE Sort_Misprime_Arrays()
   USE dnaworks_test
   IMPLICIT NONE
 
-  INTEGER :: i,j,k
+  INTEGER :: i,n
 
   IF (TEST2) PRINT *,"Sort_Misprime_Arrays" !TEST2
 
-! Sort misprime pairs
+! Heapsort misprime pairs by M1
 
-    DO i=1,CurrDNA%MN-1                     ! integer sort
-      DO j=i+1,CurrDNA%MN
-        IF (CurrDNA%M1(i).gt.CurrDNA%M1(j)) THEN
-          CALL IntSwap(CurrDNA%M1(i),CurrDNA%M1(j))
-          CALL IntSwap(CurrDNA%M2(i),CurrDNA%M2(j))
-          CALL IntSwap(CurrDNA%MX(i),CurrDNA%MX(j))
-        END IF
-      END DO
+  n = CurrDNA%MN
+  IF (n.le.1) RETURN
+
+  DO i=n/2,1,-1
+    CALL SiftDown(i,n)
+  END DO
+
+  DO i=n,2,-1
+    CALL IntSwap(CurrDNA%M1(1),CurrDNA%M1(i))
+    CALL IntSwap(CurrDNA%M2(1),CurrDNA%M2(i))
+    CALL IntSwap(CurrDNA%MX(1),CurrDNA%MX(i))
+    CALL SiftDown(1,i-1)
+  END DO
+
+CONTAINS
+
+  SUBROUTINE SiftDown(root,bottom)
+    INTEGER, INTENT(IN) :: root,bottom
+    INTEGER :: parent,child
+
+    parent = root
+    child = 2*parent
+    DO WHILE (child.le.bottom)
+      IF (child.lt.bottom) THEN
+        IF (CurrDNA%M1(child).lt.CurrDNA%M1(child+1)) child = child+1
+      END IF
+      IF (CurrDNA%M1(parent).lt.CurrDNA%M1(child)) THEN
+        CALL IntSwap(CurrDNA%M1(parent),CurrDNA%M1(child))
+        CALL IntSwap(CurrDNA%M2(parent),CurrDNA%M2(child))
+        CALL IntSwap(CurrDNA%MX(parent),CurrDNA%MX(child))
+        parent = child
+        child = 2*parent
+      ELSE
+        EXIT
+      END IF
     END DO
+  END SUBROUTINE SiftDown
 
 END SUBROUTINE Sort_Misprime_Arrays
 SUBROUTINE Sort_Repeat_Arrays
@@ -145,30 +173,59 @@ SUBROUTINE Sort_Repeat_Arrays
   USE dnaworks_test
   IMPLICIT NONE
 
-  INTEGER :: i,j,k
+  INTEGER :: i,n
 
   IF (TEST2) PRINT *,"Sort_Repeat_Arrays" !TEST2
 
-! Rearrange repeat pairs
+! Rearrange repeat pairs so RS1 <= RS2
 
-    DO i=1,CurrDNA%RN
-      IF (CurrDNA%RS1(i).gt.CurrDNA%RS2(i)) THEN
-        CALL IntSwap(CurrDNA%RS1(i),CurrDNA%RS2(i))
+  DO i=1,CurrDNA%RN
+    IF (CurrDNA%RS1(i).gt.CurrDNA%RS2(i)) THEN
+      CALL IntSwap(CurrDNA%RS1(i),CurrDNA%RS2(i))
+    END IF
+  END DO
+
+! Heapsort repeat pairs by RS1
+
+  n = CurrDNA%RN
+  IF (n.le.1) RETURN
+
+  DO i=n/2,1,-1
+    CALL SiftDown(i,n)
+  END DO
+
+  DO i=n,2,-1
+    CALL IntSwap(CurrDNA%RS1(1),CurrDNA%RS1(i))
+    CALL IntSwap(CurrDNA%RS2(1),CurrDNA%RS2(i))
+    CALL IntSwap(CurrDNA%RLn(1),CurrDNA%RLn(i))
+    CALL IntSwap(CurrDNA%RX(1),CurrDNA%RX(i))
+    CALL SiftDown(1,i-1)
+  END DO
+
+CONTAINS
+
+  SUBROUTINE SiftDown(root,bottom)
+    INTEGER, INTENT(IN) :: root,bottom
+    INTEGER :: parent,child
+
+    parent = root
+    child = 2*parent
+    DO WHILE (child.le.bottom)
+      IF (child.lt.bottom) THEN
+        IF (CurrDNA%RS1(child).lt.CurrDNA%RS1(child+1)) child = child+1
+      END IF
+      IF (CurrDNA%RS1(parent).lt.CurrDNA%RS1(child)) THEN
+        CALL IntSwap(CurrDNA%RS1(parent),CurrDNA%RS1(child))
+        CALL IntSwap(CurrDNA%RS2(parent),CurrDNA%RS2(child))
+        CALL IntSwap(CurrDNA%RLn(parent),CurrDNA%RLn(child))
+        CALL IntSwap(CurrDNA%RX(parent),CurrDNA%RX(child))
+        parent = child
+        child = 2*parent
+      ELSE
+        EXIT
       END IF
     END DO
-
-! Sort repeat pairs
-
-    DO i=1,CurrDNA%RN-1                     ! integer sort
-      DO j=i+1,CurrDNA%RN
-        IF (CurrDNA%RS1(i).gt.CurrDNA%RS1(j)) THEN
-        CALL IntSwap(CurrDNA%RS1(i),CurrDNA%RS1(j))
-        CALL IntSwap(CurrDNA%RS2(i),CurrDNA%RS2(j))
-        CALL IntSwap(CurrDNA%RLn(i),CurrDNA%RLn(j))
-        CALL IntSwap(CurrDNA%RX(i),CurrDNA%RX(j))
-        END IF
-      END DO
-    END DO
+  END SUBROUTINE SiftDown
 
 END SUBROUTINE Sort_Repeat_Arrays
 SUBROUTINE Translate_Protein

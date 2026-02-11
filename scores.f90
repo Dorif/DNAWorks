@@ -755,23 +755,12 @@ SUBROUTINE GapFix_Score
     CurrDNA%FScore(i)=0
   END DO
 
-  DO i=1,DNAlen 
+  DO i=1,DNAlen
 
-! if the position should be within gap
+! if the position should be within a gap but is in an overlap instead
 
-    IF(CurrDNA%GapFixPos(i)) THEN 
-      DO j=1,CurrDNA%NumOlaps
-
-! and it is not within a gap (it's in an overlap instead)
-
-        IF (i.ge.CurrDNA%OlapsPos(j,1).and.i.le.CurrDNA%OlapsPos(j,2)) THEN
-
-! increase its score
-
-          CurrDNA%Fscore(i)=10
-          
-        END IF
-      END DO
+    IF (CurrDNA%GapFixPos(i).and.nt2overlap(i).gt.0) THEN
+      CurrDNA%FScore(i)=10
     END IF
   END DO
 

@@ -8,15 +8,14 @@ SUBROUTINE Get_Args
   INTEGER :: ARGC                 ! number of command line arguments
   INTEGER :: i,j
 
-! IARGC returns the total number of arguments on the command line
+! COMMAND_ARGUMENT_COUNT returns the total number of arguments on the command line
 
-  ARGC=IARGC()
+  ARGC=COMMAND_ARGUMENT_COUNT()
 
-! GETARG returns the argument that corresponds to the argument number, with
-! zero equal to the command itself
+! GET_COMMAND_ARGUMENT returns the argument that corresponds to the argument number
 
   DO i=1,ARGC
-    CALL GETARG(i,ARGV(i))
+    CALL GET_COMMAND_ARGUMENT(i,ARGV(i))
 
 ! Turn on testing mode
 
@@ -72,6 +71,7 @@ SUBROUTINE Oligo_Design(SolutionNo,num)
   REAL :: guess
   REAL :: rand
   INTEGER,EXTERNAL :: CurrentTimeSeconds
+  TYPE(DNA), POINTER :: temp_ptr
 
   IF (TEST0) PRINT *,"Oligo_Design" !TEST0
 
@@ -120,7 +120,9 @@ SUBROUTINE Oligo_Design(SolutionNo,num)
       IF (ans) THEN
         nsucc=nsucc+1
       ELSE
-        CurrDNA=StoreDNA ! If not, go back to the original sequence and try again.
+        temp_ptr => CurrDNA  ! If not, swap back to the original sequence and try again.
+        CurrDNA => StoreDNA
+        StoreDNA => temp_ptr
       END IF
 
       IF (CurrDNA%OverallScore.lt.BestDNA%OverallScore) THEN
@@ -148,7 +150,7 @@ SUBROUTINE Oligo_Design(SolutionNo,num)
         EXIT mutate
       END IF
 
-      CALL FLUSH(console)
+      FLUSH(console)
 
     END DO mutate
 
@@ -163,7 +165,9 @@ SUBROUTINE Oligo_Design(SolutionNo,num)
 
   END DO tempdrop
 
-  CurrDNA = BestDNA ! Push the best solution from Oligo_Design into the current solution
+  temp_ptr => CurrDNA ! Push the best solution from Oligo_Design into the current solution
+  CurrDNA => BestDNA
+  BestDNA => temp_ptr
 
   CALL Revert_Degenerates
   CALL Print_FinalDNA_Log(outputnum,SolutionNo)
@@ -211,7 +215,7 @@ SUBROUTINE Run_Dnaworks()
 
         CALL Print_Param_Log(console,CurrSolutionNo)
         CALL Print_Param_Log(outputnum,CurrSolutionNo)
-        CALL FLUSH(console)
+        FLUSH(console)
 
         CALL Generate_Overlaps(CurrSolutionNo)
   
@@ -263,7 +267,7 @@ SUBROUTINE Stop_Program(message)
   WRITE(UNIT=console,FMT="('Program error:')")
   WRITE(UNIT=console,FMT="(a)") message
   WRITE(UNIT=console,FMT="('Exiting program now')")
-  CALL FLUSH(console)
+  FLUSH(console)
 
   WRITE(UNIT=outputnum,FMT="(' ')")
   WRITE(UNIT=outputnum,FMT="('Program error:')")
