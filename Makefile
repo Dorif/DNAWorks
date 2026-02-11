@@ -1,19 +1,15 @@
 # compiler
 FC = gfortran
 
-# compile flags
-#FCFLAGS = -g -fbounds-check -O2 -static-libgcc -static
-FCFLAGS = -fbounds-check -Ofast
-
-# link flags
-FLFLAGS =
+# compile flags (release by default; use `make debug` for debug build)
+FCFLAGS = -Ofast -march=native -flto -funroll-loops
 
 # program name
 PROGRAM = dnaworks
 
 # required objects
 objects = dnaworks.o dnaworks_data.o dnaworks_test.o \
-	control_func.o email_func.o encoding.o input.o misc_func.o \
+	control_func.o encoding.o input.o misc_func.o \
 	mutate.o output.o overlaps.o scores.o str_func.o time_func.o
 
 # required modules
@@ -28,11 +24,16 @@ $(objects): $(modules)
 
 # compile recipe for modules
 %.mod: %.f90
-	$(FC) $(FLFLAGS) -c $<
+	$(FC) $(FCFLAGS) -c $<
 
 # compile recipe for objects
 %.o: %.f90
-	$(FC) $(FLFLAGS) -c $<
+	$(FC) $(FCFLAGS) -c $<
+
+# debug build with bounds checking and warnings
+.PHONY: debug
+debug: FCFLAGS = -g -O0 -fbounds-check -Wall -Wextra -fbacktrace -static-libgcc
+debug: clean $(PROGRAM)
 
 # extra rules
 .PHONY: clean
