@@ -37,6 +37,8 @@ SUBROUTINE Get_Args
       QUIET=.TRUE.
     ELSE IF (INDEX(ARGV(i),"-fast").eq.1) THEN
       FAST=.TRUE.
+    ELSE IF (INDEX(ARGV(i),"-s").eq.1) THEN
+      SLOW=.TRUE.
     ELSE IF (INDEX(ARGV(i),"-help").eq.1) THEN
       CALL Print_Help
     ELSE

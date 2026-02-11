@@ -19,7 +19,20 @@ SUBROUTINE Create_ntID_Arrays()
   USE dnaworks_test
   IMPLICIT NONE
 
-  INTEGER :: i,j,m,n,a1,a2,b1,b2,t1,t2,fin
+  INTEGER :: i,j,a1,a2,b1,b2,fin,gc_count,at_count
+
+! Forward strand digit: A=1, C=2, G=3, T=4 (indexed by NUMseq value -3..3)
+  INTEGER, SAVE :: nt_fwd(-3:3)
+  DATA nt_fwd /2, 0, 1, 0, 4, 0, 3/
+
+! Reverse complement digit: A->T=1, C->G=2, G->C=3, T->A=4 (wait, needs to match
+! original mapping: A(-1)->4, C(-3)->3, G(3)->2, T(1)->1)
+  INTEGER, SAVE :: nt_rc(-3:3)
+  DATA nt_rc /3, 0, 4, 0, 1, 0, 2/
+
+! Precomputed powers of 10 (max index 8 for KIND=4 integers)
+  INTEGER, SAVE :: pow10(0:8)
+  DATA pow10 /1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000/
 
   IF (TEST2) PRINT *,'Create_ntID_Arrays'
 
@@ -42,26 +55,8 @@ SUBROUTINE Create_ntID_Arrays()
     CurrDNA%ntID_Tip(i)=0
     CurrDNA%ntID_TipRC(i)=0
     DO j=0,fin
-      SELECT CASE(CurrDNA%NUMseq(i+fin-j))
-        CASE(-1)
-          CurrDNA%ntID_Tip(i)=CurrDNA%ntID_Tip(i)+(1*(10**j))
-        CASE(-3)
-          CurrDNA%ntID_Tip(i)=CurrDNA%ntID_Tip(i)+(2*(10**j))
-        CASE(3)
-          CurrDNA%ntID_Tip(i)=CurrDNA%ntID_Tip(i)+(3*(10**j))
-        CASE(1)
-          CurrDNA%ntID_Tip(i)=CurrDNA%ntID_Tip(i)+(4*(10**j))
-      END SELECT
-      SELECT CASE(CurrDNA%NUMseq(i+j))
-        CASE(-1)
-          CurrDNA%ntID_TipRC(i)=CurrDNA%ntID_TipRC(i)+(4*(10**j))
-        CASE(-3)
-          CurrDNA%ntID_TipRC(i)=CurrDNA%ntID_TipRC(i)+(3*(10**j))
-        CASE(3)
-          CurrDNA%ntID_TipRC(i)=CurrDNA%ntID_TipRC(i)+(2*(10**j))
-        CASE(1)
-          CurrDNA%ntID_TipRC(i)=CurrDNA%ntID_TipRC(i)+(1*(10**j))
-      END SELECT
+      CurrDNA%ntID_Tip(i)=CurrDNA%ntID_Tip(i)+nt_fwd(CurrDNA%NUMseq(i+fin-j))*pow10(j)
+      CurrDNA%ntID_TipRC(i)=CurrDNA%ntID_TipRC(i)+nt_rc(CurrDNA%NUMseq(i+j))*pow10(j)
     END DO
   END DO
 
@@ -72,48 +67,47 @@ SUBROUTINE Create_ntID_Arrays()
     CurrDNA%ntID_Rep(i)=0
     CurrDNA%ntID_RepRC(i)=0
     DO j=0,fin
-      SELECT CASE(CurrDNA%NUMseq(i+fin-j))
-        CASE(-1)
-          CurrDNA%ntID_Rep(i)=CurrDNA%ntID_Rep(i)+(1*(10**j))
-        CASE(-3)
-          CurrDNA%ntID_Rep(i)=CurrDNA%ntID_Rep(i)+(2*(10**j))
-        CASE(3)
-          CurrDNA%ntID_Rep(i)=CurrDNA%ntID_Rep(i)+(3*(10**j))
-        CASE(1)
-          CurrDNA%ntID_Rep(i)=CurrDNA%ntID_Rep(i)+(4*(10**j))
-      END SELECT
-      SELECT CASE(CurrDNA%NUMseq(i+j))
-        CASE(-1)
-          CurrDNA%ntID_RepRC(i)=CurrDNA%ntID_RepRC(i)+(4*(10**j))
-        CASE(-3)
-          CurrDNA%ntID_RepRC(i)=CurrDNA%ntID_RepRC(i)+(3*(10**j))
-        CASE(3)
-          CurrDNA%ntID_RepRC(i)=CurrDNA%ntID_RepRC(i)+(2*(10**j))
-        CASE(1)
-          CurrDNA%ntID_RepRC(i)=CurrDNA%ntID_RepRC(i)+(1*(10**j))
-      END SELECT
+      CurrDNA%ntID_Rep(i)=CurrDNA%ntID_Rep(i)+nt_fwd(CurrDNA%NUMseq(i+fin-j))*pow10(j)
+      CurrDNA%ntID_RepRC(i)=CurrDNA%ntID_RepRC(i)+nt_rc(CurrDNA%NUMseq(i+j))*pow10(j)
     END DO
   END DO
 
-! update GC array
+! update GC and AT arrays
+! When MutProtPos==0 (full scan), use sliding window for O(n) instead of O(n*k)
 
   fin=RepLen-1
-  DO i=b1,b2
-    CurrDNA%ntID_GC(i)=0
-    DO j=(i+0),(i+fin)
-      IF (ABS(CurrDNA%NUMseq(j)).eq.1) CurrDNA%ntID_GC(i)=CurrDNA%ntID_GC(i)+1
+  IF (MutProtPos.eq.0 .and. b2.gt.b1) THEN
+    ! Compute initial window for position b1
+    gc_count=0
+    at_count=0
+    DO j=b1, b1+fin
+      IF (ABS(CurrDNA%NUMseq(j)).eq.1) gc_count=gc_count+1
+      IF (ABS(CurrDNA%NUMseq(j)).eq.3) at_count=at_count+1
     END DO
-  END DO
-
-! update AT array
-
-  fin=RepLen-1
-  DO i=b1,b2
-    CurrDNA%ntID_AT(i)=0
-    DO j=(i+0),(i+fin)
-      IF (ABS(CurrDNA%NUMseq(j)).eq.3) CurrDNA%ntID_AT(i)=CurrDNA%ntID_AT(i)+1
+    CurrDNA%ntID_GC(b1)=gc_count
+    CurrDNA%ntID_AT(b1)=at_count
+    ! Slide the window
+    DO i=b1+1, b2
+      ! Remove element leaving the window (position i-1)
+      IF (ABS(CurrDNA%NUMseq(i-1)).eq.1) gc_count=gc_count-1
+      IF (ABS(CurrDNA%NUMseq(i-1)).eq.3) at_count=at_count-1
+      ! Add element entering the window (position i+fin)
+      IF (ABS(CurrDNA%NUMseq(i+fin)).eq.1) gc_count=gc_count+1
+      IF (ABS(CurrDNA%NUMseq(i+fin)).eq.3) at_count=at_count+1
+      CurrDNA%ntID_GC(i)=gc_count
+      CurrDNA%ntID_AT(i)=at_count
     END DO
-  END DO
+  ELSE
+    ! Partial update or single position: use direct counting
+    DO i=b1,b2
+      CurrDNA%ntID_GC(i)=0
+      CurrDNA%ntID_AT(i)=0
+      DO j=i, i+fin
+        IF (ABS(CurrDNA%NUMseq(j)).eq.1) CurrDNA%ntID_GC(i)=CurrDNA%ntID_GC(i)+1
+        IF (ABS(CurrDNA%NUMseq(j)).eq.3) CurrDNA%ntID_AT(i)=CurrDNA%ntID_AT(i)+1
+      END DO
+    END DO
+  END IF
 
 END SUBROUTINE Create_ntID_Arrays
 SUBROUTINE Sort_Misprime_Arrays()

@@ -18,7 +18,12 @@ PROGRAM dnaworks
 
   CALL Get_Args                 ! get the command arguments, if any
   CALL Default_Param
+  CALL Allocate_DNA(DNAPool(1), MaxDNAlen, MaxPROTlen)
   CALL Read_Input
+  CALL Rightsize_DNA(DNAPool(1), DNAlen, PROTlen)
+  CALL Allocate_DNA(DNAPool(2), DNAlen, MAX(PROTlen,1))
+  CALL Allocate_DNA(DNAPool(3), DNAlen, MAX(PROTlen,1))
+  CALL Allocate_DNA(DNAPool(4), DNAlen, MAX(PROTlen,1))
 
   IF (DNAlen.LE.50) CALL Stop_Program("DNA length is less than 50 nt.")
 

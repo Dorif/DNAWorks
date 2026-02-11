@@ -18,7 +18,7 @@ SUBROUTINE Create_Final_Arrays
   olap=1
   last=.FALSE.
 
-  DO i=1,MaxDNAlen
+  DO i=1,DNAlen
     nt2Solig(i)=0
     nt2Aolig(i)=0
   END DO
@@ -901,7 +901,7 @@ SUBROUTINE Print_Help
   PRINT *,""
   PRINT *,"The command line is as follows:"
   PRINT *,""
-  PRINT *,"  % dnaworks [ inputfile ] [ -t0 | -t1 | -t2 | -t3 ]"
+  PRINT *,"  % dnaworks [ inputfile ] [ -t0 | -t1 | -t2 | -t3 ] [ -s ]"
   PRINT *,""
   PRINT *,"The default inputfile is 'DNAWORKS.inp'.  All options, except for those"
   PRINT *,"on the command line, are read from the inputfile.  See below for a complete"
@@ -914,6 +914,9 @@ SUBROUTINE Print_Help
   PRINT *,"  -t1   Most subroutine names reported"
   PRINT *,"  -t2   Heavy output, all subroutines, some functions"
   PRINT *,"  -t3   Way too much output, all subroutines and functions reported"
+  PRINT *,""
+  PRINT *,"The -s flag enables slow mode, which computes salt corrections from the"
+  PRINT *,"SantaLucia/von Ahsen equation instead of using the precomputed lookup table."
   PRINT *,""
   PRINT *,"INPUTFILE OPTIONS"
   PRINT *,"=============================================================================="

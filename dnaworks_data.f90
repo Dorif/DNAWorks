@@ -99,6 +99,7 @@ MODULE dnaworks_data
   LOGICAL :: NOGAPS=.FALSE.             ! if no gaps are desired
   LOGICAL :: QUIET=.FALSE.
   LOGICAL :: FAST=.FALSE.               ! cut corners
+  LOGICAL :: SLOW=.FALSE.               ! compute salt corrections from equation
   LOGICAL :: TimesUp=.FALSE.
   LOGICAL :: SequenceTranslated=.FALSE.   ! if false, generate all scores; if
                                         ! true, only generate scores that
@@ -392,24 +393,23 @@ MODULE dnaworks_data
 ! SOLUTIONS
 
   TYPE DNA
-    CHARACTER(LEN=9999) :: DNAseq=''  ! the actual DNA sequence,in ACGT nts
-    INTEGER :: NumOlaps=0 
-!    INTEGER :: NumOlaps=0              ! the total number of overlaps
-    INTEGER :: OlapsPos(999,2)         ! the positions of the first and last
+    CHARACTER(LEN=:), ALLOCATABLE :: DNAseq  ! the actual DNA sequence,in ACGT nts
+    INTEGER :: NumOlaps=0              ! the total number of overlaps
+    INTEGER, ALLOCATABLE :: OlapsPos(:,:)  ! the positions of the first and last
                                        !   nucleotides in the overlap
-    INTEGER(KIND=1) :: NUMseq(9999)           ! the nt sequence as numbers (-1,-3,3,1)
-    INTEGER(KIND=1) :: prot2cod(3333)          ! PROTpos to codon (1-64)
-    INTEGER(KIND=1) :: nt2cod(9999)           ! DNApos to codon (1-64) or 0
-    REAL :: MeltT(999)                 ! melting temps for the overlaps
-    REAL :: TScore(999)                ! overlap-based score of MeltTm deviance
-    REAL :: CScore(3333)               ! codon-based score of codon frequency
-    REAL :: LScore(9999)              ! nt-based score of oligo length
-    INTEGER :: RScore(9999)           ! nt-based score of repeats
-    INTEGER :: PScore(9999)           ! nt-based score of pattern matching
-    INTEGER :: MScore(9999)           ! nt-based score of potential mispriming
-    INTEGER :: AScore(9999)           ! nt-based score of AT content
-    INTEGER :: GScore(9999)           ! nt-based score of GC content
-    INTEGER :: FScore(9999)           ! nt-based score of gap-fixed positions
+    INTEGER(KIND=1), ALLOCATABLE :: NUMseq(:)    ! the nt sequence as numbers (-1,-3,3,1)
+    INTEGER(KIND=1), ALLOCATABLE :: prot2cod(:)  ! PROTpos to codon (1-64)
+    INTEGER(KIND=1), ALLOCATABLE :: nt2cod(:)    ! DNApos to codon (1-64) or 0
+    REAL, ALLOCATABLE :: MeltT(:)              ! melting temps for the overlaps
+    REAL, ALLOCATABLE :: TScore(:)             ! overlap-based score of MeltTm deviance
+    REAL, ALLOCATABLE :: CScore(:)             ! codon-based score of codon frequency
+    REAL, ALLOCATABLE :: LScore(:)             ! nt-based score of oligo length
+    INTEGER, ALLOCATABLE :: RScore(:)          ! nt-based score of repeats
+    INTEGER, ALLOCATABLE :: PScore(:)          ! nt-based score of pattern matching
+    INTEGER, ALLOCATABLE :: MScore(:)          ! nt-based score of potential mispriming
+    INTEGER, ALLOCATABLE :: AScore(:)          ! nt-based score of AT content
+    INTEGER, ALLOCATABLE :: GScore(:)          ! nt-based score of GC content
+    INTEGER, ALLOCATABLE :: FScore(:)          ! nt-based score of gap-fixed positions
     REAL :: TotalGScore=0              ! total score for GC content
     REAL :: TotalAScore=0              ! total score for AT content
     REAL :: TotalLScore=0              ! total score for oligo length
@@ -421,29 +421,28 @@ MODULE dnaworks_data
     REAL :: TotalFScore=0              ! total score for gap-fixed positions
     REAL :: OverallScore=0             ! Sum of all the total scores
     INTEGER :: RN=0             ! number of tandem repeats
-    INTEGER :: RS1(9999)         ! starting position for primary seq
-    INTEGER :: RS2(9999)         ! starting position for secondary seq
-    INTEGER :: RLn(9999)          ! size of repeat (not oligo ends)
-!    INTEGER(KIND=1) :: RX(9999)          ! direct=1,inverse=-1
-    INTEGER :: RX(9999)          ! direct=1,inverse=-1
+    INTEGER, ALLOCATABLE :: RS1(:)     ! starting position for primary seq
+    INTEGER, ALLOCATABLE :: RS2(:)     ! starting position for secondary seq
+    INTEGER, ALLOCATABLE :: RLn(:)     ! size of repeat (not oligo ends)
+    INTEGER, ALLOCATABLE :: RX(:)      ! direct=1,inverse=-1
     INTEGER :: MN=0          ! number of potential misprimes
-    INTEGER :: M1(9999)      ! starting position for potential misprime in prim
-    INTEGER :: M2(9999)      ! starting position for potential misprime in seco
-    INTEGER :: MX(9999)      ! Type of potential misprime (DS,IS,DA,IA)
+    INTEGER, ALLOCATABLE :: M1(:)      ! starting position for potential misprime in prim
+    INTEGER, ALLOCATABLE :: M2(:)      ! starting position for potential misprime in seco
+    INTEGER, ALLOCATABLE :: MX(:)      ! Type of potential misprime (DS,IS,DA,IA)
     INTEGER :: MSN=0         ! number of actual misprimes
-    INTEGER :: MS1(9999)     ! starting position for actual misprime in prim
-    INTEGER :: MS2(9999)     ! starting position for actual misprime in seco
-    INTEGER :: MSX(9999)     ! Type of actual misprime (DS,IS,DA,IA)
-    INTEGER :: MOL(9999)     ! overlap the misprime is in
-    INTEGER :: ntID_GC(9999)    ! window of GC content
-    INTEGER :: ntID_AT(9999)    ! window of AT content
-    INTEGER :: ntID_Tip(9999)   ! unique number for Tip matching
-    INTEGER :: ntID_TipRC(9999) ! unique number for Tip (reverse complement)
-    INTEGER :: ntID_Rep(9999)   ! unique number for Repeat matching
-    INTEGER :: ntID_RepRC(9999) ! repeat matching (reverse complement)
-    LOGICAL :: GapFixPos(9999)  ! should nt be fixed within a gap?
-    LOGICAL :: Degen(9999)    ! true if the nt is degenerate
-    INTEGER :: DegenNum(9999)   ! numerical index for degenerate sequence (1-11)
+    INTEGER, ALLOCATABLE :: MS1(:)     ! starting position for actual misprime in prim
+    INTEGER, ALLOCATABLE :: MS2(:)     ! starting position for actual misprime in seco
+    INTEGER, ALLOCATABLE :: MSX(:)     ! Type of actual misprime (DS,IS,DA,IA)
+    INTEGER, ALLOCATABLE :: MOL(:)     ! overlap the misprime is in
+    INTEGER, ALLOCATABLE :: ntID_GC(:)    ! window of GC content
+    INTEGER, ALLOCATABLE :: ntID_AT(:)    ! window of AT content
+    INTEGER, ALLOCATABLE :: ntID_Tip(:)   ! unique number for Tip matching
+    INTEGER, ALLOCATABLE :: ntID_TipRC(:) ! unique number for Tip (reverse complement)
+    INTEGER, ALLOCATABLE :: ntID_Rep(:)   ! unique number for Repeat matching
+    INTEGER, ALLOCATABLE :: ntID_RepRC(:) ! repeat matching (reverse complement)
+    LOGICAL, ALLOCATABLE :: GapFixPos(:)  ! should nt be fixed within a gap?
+    LOGICAL, ALLOCATABLE :: Degen(:)    ! true if the nt is degenerate
+    INTEGER, ALLOCATABLE :: DegenNum(:)   ! numerical index for degenerate sequence (1-11)
   END TYPE
 
   TYPE(DNA), TARGET :: DNAPool(4)
@@ -451,5 +450,143 @@ MODULE dnaworks_data
   TYPE(DNA), POINTER :: StoreDNA => NULL()
   TYPE(DNA), POINTER :: BestDNA => NULL()
   TYPE(DNA), POINTER :: BestOverlapDNA => NULL()
+
+CONTAINS
+
+SUBROUTINE Allocate_DNA(dna_inst, dlen, plen)
+  TYPE(DNA), INTENT(INOUT) :: dna_inst
+  INTEGER, INTENT(IN) :: dlen, plen
+  INTEGER :: pl
+  pl = MAX(plen, 1)
+  ALLOCATE(CHARACTER(LEN=dlen) :: dna_inst%DNAseq)
+  dna_inst%DNAseq = REPEAT(' ', dlen)
+  ALLOCATE(dna_inst%OlapsPos(dlen, 2))
+  ALLOCATE(dna_inst%NUMseq(dlen))
+  ALLOCATE(dna_inst%prot2cod(pl))
+  ALLOCATE(dna_inst%nt2cod(dlen))
+  ALLOCATE(dna_inst%MeltT(dlen))
+  ALLOCATE(dna_inst%TScore(dlen))
+  ALLOCATE(dna_inst%CScore(pl))
+  ALLOCATE(dna_inst%LScore(dlen))
+  ALLOCATE(dna_inst%RScore(dlen))
+  ALLOCATE(dna_inst%PScore(dlen))
+  ALLOCATE(dna_inst%MScore(dlen))
+  ALLOCATE(dna_inst%AScore(dlen))
+  ALLOCATE(dna_inst%GScore(dlen))
+  ALLOCATE(dna_inst%FScore(dlen))
+  ALLOCATE(dna_inst%RS1(dlen))
+  ALLOCATE(dna_inst%RS2(dlen))
+  ALLOCATE(dna_inst%RLn(dlen))
+  ALLOCATE(dna_inst%RX(dlen))
+  ALLOCATE(dna_inst%M1(dlen))
+  ALLOCATE(dna_inst%M2(dlen))
+  ALLOCATE(dna_inst%MX(dlen))
+  ALLOCATE(dna_inst%MS1(dlen))
+  ALLOCATE(dna_inst%MS2(dlen))
+  ALLOCATE(dna_inst%MSX(dlen))
+  ALLOCATE(dna_inst%MOL(dlen))
+  ALLOCATE(dna_inst%ntID_GC(dlen))
+  ALLOCATE(dna_inst%ntID_AT(dlen))
+  ALLOCATE(dna_inst%ntID_Tip(dlen))
+  ALLOCATE(dna_inst%ntID_TipRC(dlen))
+  ALLOCATE(dna_inst%ntID_Rep(dlen))
+  ALLOCATE(dna_inst%ntID_RepRC(dlen))
+  ALLOCATE(dna_inst%GapFixPos(dlen))
+  ALLOCATE(dna_inst%Degen(dlen))
+  ALLOCATE(dna_inst%DegenNum(dlen))
+  dna_inst%OlapsPos = 0
+  dna_inst%NUMseq = 0
+  dna_inst%prot2cod = 0
+  dna_inst%nt2cod = 0
+  dna_inst%MeltT = 0.0
+  dna_inst%TScore = 0.0
+  dna_inst%CScore = 0.0
+  dna_inst%LScore = 0.0
+  dna_inst%RScore = 0
+  dna_inst%PScore = 0
+  dna_inst%MScore = 0
+  dna_inst%AScore = 0
+  dna_inst%GScore = 0
+  dna_inst%FScore = 0
+  dna_inst%RS1 = 0
+  dna_inst%RS2 = 0
+  dna_inst%RLn = 0
+  dna_inst%RX = 0
+  dna_inst%M1 = 0
+  dna_inst%M2 = 0
+  dna_inst%MX = 0
+  dna_inst%MS1 = 0
+  dna_inst%MS2 = 0
+  dna_inst%MSX = 0
+  dna_inst%MOL = 0
+  dna_inst%ntID_GC = 0
+  dna_inst%ntID_AT = 0
+  dna_inst%ntID_Tip = 0
+  dna_inst%ntID_TipRC = 0
+  dna_inst%ntID_Rep = 0
+  dna_inst%ntID_RepRC = 0
+  dna_inst%GapFixPos = .FALSE.
+  dna_inst%Degen = .FALSE.
+  dna_inst%DegenNum = 0
+END SUBROUTINE Allocate_DNA
+
+SUBROUTINE Deallocate_DNA(dna_inst)
+  TYPE(DNA), INTENT(INOUT) :: dna_inst
+  IF (ALLOCATED(dna_inst%DNAseq)) DEALLOCATE(dna_inst%DNAseq)
+  IF (ALLOCATED(dna_inst%OlapsPos)) DEALLOCATE(dna_inst%OlapsPos)
+  IF (ALLOCATED(dna_inst%NUMseq)) DEALLOCATE(dna_inst%NUMseq)
+  IF (ALLOCATED(dna_inst%prot2cod)) DEALLOCATE(dna_inst%prot2cod)
+  IF (ALLOCATED(dna_inst%nt2cod)) DEALLOCATE(dna_inst%nt2cod)
+  IF (ALLOCATED(dna_inst%MeltT)) DEALLOCATE(dna_inst%MeltT)
+  IF (ALLOCATED(dna_inst%TScore)) DEALLOCATE(dna_inst%TScore)
+  IF (ALLOCATED(dna_inst%CScore)) DEALLOCATE(dna_inst%CScore)
+  IF (ALLOCATED(dna_inst%LScore)) DEALLOCATE(dna_inst%LScore)
+  IF (ALLOCATED(dna_inst%RScore)) DEALLOCATE(dna_inst%RScore)
+  IF (ALLOCATED(dna_inst%PScore)) DEALLOCATE(dna_inst%PScore)
+  IF (ALLOCATED(dna_inst%MScore)) DEALLOCATE(dna_inst%MScore)
+  IF (ALLOCATED(dna_inst%AScore)) DEALLOCATE(dna_inst%AScore)
+  IF (ALLOCATED(dna_inst%GScore)) DEALLOCATE(dna_inst%GScore)
+  IF (ALLOCATED(dna_inst%FScore)) DEALLOCATE(dna_inst%FScore)
+  IF (ALLOCATED(dna_inst%RS1)) DEALLOCATE(dna_inst%RS1)
+  IF (ALLOCATED(dna_inst%RS2)) DEALLOCATE(dna_inst%RS2)
+  IF (ALLOCATED(dna_inst%RLn)) DEALLOCATE(dna_inst%RLn)
+  IF (ALLOCATED(dna_inst%RX)) DEALLOCATE(dna_inst%RX)
+  IF (ALLOCATED(dna_inst%M1)) DEALLOCATE(dna_inst%M1)
+  IF (ALLOCATED(dna_inst%M2)) DEALLOCATE(dna_inst%M2)
+  IF (ALLOCATED(dna_inst%MX)) DEALLOCATE(dna_inst%MX)
+  IF (ALLOCATED(dna_inst%MS1)) DEALLOCATE(dna_inst%MS1)
+  IF (ALLOCATED(dna_inst%MS2)) DEALLOCATE(dna_inst%MS2)
+  IF (ALLOCATED(dna_inst%MSX)) DEALLOCATE(dna_inst%MSX)
+  IF (ALLOCATED(dna_inst%MOL)) DEALLOCATE(dna_inst%MOL)
+  IF (ALLOCATED(dna_inst%ntID_GC)) DEALLOCATE(dna_inst%ntID_GC)
+  IF (ALLOCATED(dna_inst%ntID_AT)) DEALLOCATE(dna_inst%ntID_AT)
+  IF (ALLOCATED(dna_inst%ntID_Tip)) DEALLOCATE(dna_inst%ntID_Tip)
+  IF (ALLOCATED(dna_inst%ntID_TipRC)) DEALLOCATE(dna_inst%ntID_TipRC)
+  IF (ALLOCATED(dna_inst%ntID_Rep)) DEALLOCATE(dna_inst%ntID_Rep)
+  IF (ALLOCATED(dna_inst%ntID_RepRC)) DEALLOCATE(dna_inst%ntID_RepRC)
+  IF (ALLOCATED(dna_inst%GapFixPos)) DEALLOCATE(dna_inst%GapFixPos)
+  IF (ALLOCATED(dna_inst%Degen)) DEALLOCATE(dna_inst%Degen)
+  IF (ALLOCATED(dna_inst%DegenNum)) DEALLOCATE(dna_inst%DegenNum)
+END SUBROUTINE Deallocate_DNA
+
+SUBROUTINE Rightsize_DNA(dna_inst, dlen, plen)
+  TYPE(DNA), INTENT(INOUT) :: dna_inst
+  INTEGER, INTENT(IN) :: dlen, plen
+  TYPE(DNA) :: temp
+  INTEGER :: pl, no
+  pl = MAX(plen, 1)
+  no = dna_inst%NumOlaps
+  CALL Allocate_DNA(temp, dlen, pl)
+  temp%DNAseq = dna_inst%DNAseq(1:dlen)
+  temp%NumOlaps = no
+  IF (no > 0) temp%OlapsPos(1:no,:) = dna_inst%OlapsPos(1:no,:)
+  temp%NUMseq(1:dlen) = dna_inst%NUMseq(1:dlen)
+  IF (plen > 0) temp%prot2cod(1:plen) = dna_inst%prot2cod(1:plen)
+  temp%nt2cod(1:dlen) = dna_inst%nt2cod(1:dlen)
+  temp%GapFixPos(1:dlen) = dna_inst%GapFixPos(1:dlen)
+  temp%Degen(1:dlen) = dna_inst%Degen(1:dlen)
+  temp%DegenNum(1:dlen) = dna_inst%DegenNum(1:dlen)
+  dna_inst = temp
+END SUBROUTINE Rightsize_DNA
 
 END MODULE dnaworks_data

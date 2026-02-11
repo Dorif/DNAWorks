@@ -110,10 +110,7 @@ SUBROUTINE Generate_Overlaps(SolutionNo)
       BestOverlapDNA = CurrDNA            ! initialize BestOverlapDNA values
       BestOverlapDNA%OverallScore = 9999
 
-      DO i=1,999                        ! initialize the arrays
-        CurrDNA%OlapsPos(i,1)=0
-        CurrDNA%OlapsPos(i,2)=0
-      END DO
+      CurrDNA%OlapsPos = 0               ! initialize the arrays
       CurrDNA%NumOlaps=0
     
 ! Determine the new CurrDNA%OlapsPos values

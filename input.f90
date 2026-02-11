@@ -313,8 +313,6 @@ SUBROUTINE Default_Param
 
   DO i=1,9999
     nt2aa(i) = 0
-    CurrDNA%nt2cod(i) = 0
-    CurrDNA%GapFixPos(i) = .FALSE.
   END DO
 
   DO i=1,21

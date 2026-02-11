@@ -134,21 +134,22 @@ SUBROUTINE RevStr(str)
 !
 ! Returns the reverse of a string
 
-  USE dnaworks_data
   USE dnaworks_test
   IMPLICIT NONE
 
   CHARACTER(LEN=*) :: str
-  INTEGER :: i,j
+  CHARACTER(LEN=LEN(str)) :: buf
+  INTEGER :: i,j,n
 
   IF (TEST3) PRINT *,'RevStr'
 
-  DO i=1,LEN_TRIM(str)
-    j=(LEN_TRIM(str))-i+1
-    SCRATCH(i:i)=str(j:j)
+  n=LEN_TRIM(str)
+  DO i=1,n
+    j=n-i+1
+    buf(i:i)=str(j:j)
   END DO
 
-  str=SCRATCH(1:(LEN_TRIM(str)))
+  str=buf(1:n)
 
 END SUBROUTINE RevStr
 INTEGER FUNCTION StrToInt(str)

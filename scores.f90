@@ -352,8 +352,10 @@ SUBROUTINE Equalize_Scores()
 ! If nt is within a codon, is within an overlap, and is unique protein residue
 
   DO i=1,DNAlen
-    IF ((nt2prot(i).ne.0).and.(nt2overlap(i).ne.0).and.(nt2prot(i).ne.nt2prot(i-1))) THEN
-      CodPerOlap(nt2overlap(i))=CodPerOlap(nt2overlap(i))+1
+    IF ((nt2prot(i).ne.0).and.(nt2overlap(i).ne.0)) THEN
+      IF (i.eq.1 .or. nt2prot(i).ne.nt2prot(i-1)) THEN
+        CodPerOlap(nt2overlap(i))=CodPerOlap(nt2overlap(i))+1
+      END IF
     END IF
   END DO
 
@@ -830,7 +832,7 @@ SUBROUTINE Increment_Misprime_Arrays(pos1,pos2,dir)
   IF (TEST2) PRINT *,"Increment_Misprime_Arrays" !TEST2
 
   CurrDNA%MN=CurrDNA%MN+1
-  IF (CurrDNA%MN.ge.MaxDNAlen) THEN
+  IF (CurrDNA%MN.ge.DNAlen) THEN
     WRITE(text,FMT="('MN = ',i9,' Too many misprimes.')") CurrDNA%MN
 !    DO i=1,CurrDNA%MN
 !      PRINT *,CurrDNA%M1(i),CurrDNA%M2(i),CurrDNA%MX(i)
@@ -909,7 +911,7 @@ SUBROUTINE Increment_Repeat_Arrays(i,j,dir)
 
 ! Expand inverse repeats
 
-    startingRC: DO a=1,MaxDNAlen
+    startingRC: DO a=1,DNAlen
       pos1=i-a
       last=j+length-1+a
       IF ((pos1.lt.1).or.(last.gt.DNAlen).or.&
@@ -919,7 +921,7 @@ SUBROUTINE Increment_Repeat_Arrays(i,j,dir)
         EXIT startingRC
       END IF
     END DO startingRC
-    endingRC: DO a=1,MaxDNAlen
+    endingRC: DO a=1,DNAlen
       pos2=j-a
       last=i+length-1+a
       IF ((pos2.lt.1).or.(last.gt.DNAlen).or.&
@@ -933,7 +935,7 @@ SUBROUTINE Increment_Repeat_Arrays(i,j,dir)
   END IF
 
   CurrDNA%RN=CurrDNA%RN+1
-  IF (CurrDNA%RN.ge.MaxDNAlen) CALL Stop_Program("Too many repeats.")
+  IF (CurrDNA%RN.ge.DNAlen) CALL Stop_Program("Too many repeats.")
   CurrDNA%RS1(CurrDNA%RN)=pos1
   CurrDNA%RS2(CurrDNA%RN)=pos2
   CurrDNA%RLn(CurrDNA%RN)=length
@@ -1273,9 +1275,31 @@ REAL FUNCTION TmCalc(start,finish)
   USE dnaworks_test
   IMPLICIT NONE
 
-  INTEGER :: start,finish,i
+  INTEGER :: start,finish,i,i1,i2
   REAL :: dh,ds
   LOGICAL :: self_compl
+
+! Lookup table: NUMseq values {-3,-1,1,3} -> indices {1,2,3,4} (C,A,T,G)
+  INTEGER, SAVE :: nt_idx(-3:3)
+  DATA nt_idx /1, 0, 2, 0, 3, 0, 4/
+
+! Nearest-neighbor dH table (kcal/mol), indexed dh_nn(first_nt, second_nt)
+!   Index order: C=1, A=2, T=3, G=4
+!   DATA fills column-major: col 1 first, then col 2, etc.
+  REAL, SAVE :: dh_nn(4,4)
+  DATA dh_nn / &
+    -8.0, -8.4, -8.2, -9.8, &   ! col 1 (2nd=C): CC,AC,TC,GC
+    -8.5, -7.9, -7.2, -8.2, &   ! col 2 (2nd=A): CA,AA,TA,GA
+    -7.8, -7.2, -7.9, -8.4, &   ! col 3 (2nd=T): CT,AT,TT,GT
+   -10.6, -7.8, -8.5, -8.0  /   ! col 4 (2nd=G): CG,AG,TG,GG
+
+! Nearest-neighbor dS table (cal/K*mol)
+  REAL, SAVE :: ds_nn(4,4)
+  DATA ds_nn / &
+   -19.8612,  -22.44082, -22.24469, -24.37776, &  ! col 1 (2nd=C)
+   -22.73082, -22.2473,  -21.34081, -22.24469, &  ! col 2 (2nd=A)
+   -21.02469, -20.38082, -22.2473,  -22.44082, &  ! col 3 (2nd=T)
+   -27.17776, -21.02469, -22.73082, -19.8612   /  ! col 4 (2nd=G)
 
   IF (TEST3) PRINT *,"TmCalc" !TEST3
 
@@ -1292,72 +1316,13 @@ REAL FUNCTION TmCalc(start,finish)
      RETURN
    END IF
 
-! Sum the dH, dS values
+! Sum the dH, dS values using lookup tables
 
   DO i=start,finish-1
-
-    SELECT CASE(CurrDNA%NUMseq(i))
-      CASE(-1)          ! A->
-      SELECT CASE(CurrDNA%NUMseq(i+1))
-        CASE(-1)          ! AA
-          dh=dh-7.9
-          ds=ds-22.2473   ! 22.25
-        CASE(1)           ! AT
-          dh=dh-7.2
-          ds=ds-20.38082  ! 20.35
-        CASE(-3)          ! AC
-          dh=dh-8.4
-          ds=ds-22.44082  ! 22.44
-        CASE(3)           ! AG
-          dh=dh-7.8
-          ds=ds-21.02469  ! 21.03
-      END SELECT
-      CASE(1)           ! T->
-      SELECT CASE(CurrDNA%NUMseq(i+1))
-        CASE(-1)          ! TA
-          dh=dh-7.2
-          ds=ds-21.34081  ! 20.32
-        CASE(1)           ! TT
-          dh=dh-7.9
-          ds=ds-22.2473   ! 22.25
-        CASE(-3)          ! TC
-          dh=dh-8.2
-          ds=ds-22.24469  ! 22.25
-        CASE(3)           ! TG
-          dh=dh-8.5
-          ds=ds-22.73082  ! 22.73
-      END SELECT
-      CASE(-3)          ! C->
-      SELECT CASE(CurrDNA%NUMseq(i+1))
-        CASE(-1)          ! CA
-          dh=dh-8.5
-          ds=ds-22.73082  ! 22.73
-        CASE(1)           ! CT
-          dh=dh-7.8
-          ds=ds-21.02469  ! 21.03
-        CASE(-3)          ! CC
-          dh=dh-8.0
-          ds=ds-19.8612   ! 19.86
-        CASE(3)           ! CG
-          dh=dh-10.6
-          ds=ds-27.17776  ! 27.15
-      END SELECT
-      CASE(3)           ! G->
-      SELECT CASE(CurrDNA%NUMseq(i+1))
-        CASE(-1)          ! GA
-          dh=dh-8.2
-          ds=ds-22.24469  ! 22.25
-        CASE(1)           ! GT
-          dh=dh-8.4
-          ds=ds-22.44082  ! 22.44
-        CASE(-3)          ! GC
-          dh=dh-9.8
-          ds=ds-24.37776  ! 24.35
-        CASE(3)           ! GG
-          dh=dh-8.0
-          ds=ds-19.8612   ! 19.86
-      END SELECT
-    END SELEcT
+    i1 = nt_idx(CurrDNA%NUMseq(i))
+    i2 = nt_idx(CurrDNA%NUMseq(i+1))
+    dh = dh + dh_nn(i1,i2)
+    ds = ds + ds_nn(i1,i2)
   END DO
 
 ! Correct for A or T at the termini
@@ -1375,7 +1340,7 @@ REAL FUNCTION TmCalc(start,finish)
 ! Correct for self-complementarity
 
   inner1: DO i=start,finish
-    IF ((CurrDNA%NUMseq(i)+CurrDNA%NUMseq(finish-start-i)).eq.0) THEN
+    IF ((CurrDNA%NUMseq(i)+CurrDNA%NUMseq(finish+start-i)).eq.0) THEN
       self_compl=.TRUE.
     ELSE
       self_compl=.FALSE.
@@ -1405,197 +1370,162 @@ END FUNCTION TmCalc
 SUBROUTINE TmCorrect
 !
 ! Create salt and oligo corrections for Tm
+! Uses a 2D lookup table indexed by snapped sodium and magnesium concentrations.
 
   USE dnaworks_data
   USE dnaworks_test
   IMPLICIT NONE
 
+  INTEGER :: si, mi, i
+  REAL :: best_dist, dist
+
+! Sodium levels (M): 21 values (fine step 0.005 from 0.01 to 0.075)
+  REAL, SAVE :: na_lvl(21)
+  DATA na_lvl /0.010, 0.015, 0.020, 0.025, 0.030, 0.035, 0.040, &
+               0.045, 0.050, 0.055, 0.060, 0.065, 0.070, 0.075, &
+               0.100, 0.150, 0.200, 0.250, 0.500, 0.750, 1.000/
+
+! Mg levels (M): 16 values (fine step 0.0005 from 0.002 to 0.005)
+  REAL, SAVE :: mg_lvl(16)
+  DATA mg_lvl /0.0000, 0.0005, 0.0010, 0.0015, 0.0020, 0.0025, 0.0030, &
+               0.0035, 0.0040, 0.0045, 0.0050, 0.0100, 0.0200, 0.0500, &
+               0.1000, 0.2000/
+
+! Salt correction table: salt_table(sodium_idx, mg_idx)
+! Stored column-major (Fortran default).
+! Each column is one Mg level; each row is one Na level.
+! Intermediate values computed via bilinear interpolation from original data.
+  REAL, SAVE :: salt_table(21,16)
+  DATA salt_table / &
+    -1.6960,-1.5831,-1.4703,-1.3574,-1.3065, &  ! Mg=0.0000
+    -1.2555,-1.2046,-1.1536,-1.1027,-1.0730, &
+    -1.0434,-1.0137,-0.9841,-0.9544,-0.8480, &
+    -0.6964,-0.5933,-0.5094,-0.2547,-0.1064, &
+     0.0000,                                  &
+    -0.9125,-0.8921,-0.8716,-0.8512,-0.8351, &  ! Mg=0.0005
+    -0.8190,-0.8028,-0.7867,-0.7706,-0.7564, &
+    -0.7422,-0.7281,-0.7139,-0.6997,-0.6449, &
+    -0.5514,-0.4772,-0.4159,-0.2031,-0.0709, &
+     0.0258,                                  &
+    -0.7996,-0.7846,-0.7695,-0.7545,-0.7410, &  ! Mg=0.0010
+    -0.7274,-0.7139,-0.7003,-0.6868,-0.6758, &
+    -0.6649,-0.6539,-0.6430,-0.6320,-0.5836, &
+    -0.5030,-0.4385,-0.3805,-0.1838,-0.0580, &
+     0.0355,                                  &
+    -0.7287,-0.7158,-0.7029,-0.6900,-0.6790, &  ! Mg=0.0015
+    -0.6681,-0.6571,-0.6462,-0.6352,-0.6255, &
+    -0.6158,-0.6062,-0.5965,-0.5868,-0.5449, &
+    -0.4707,-0.4095,-0.3579,-0.1709,-0.0484, &
+     0.0451,                                  &
+    -0.6803,-0.6696,-0.6588,-0.6481,-0.6378, &  ! Mg=0.0020
+    -0.6275,-0.6171,-0.6068,-0.5965,-0.5881, &
+    -0.5797,-0.5714,-0.5630,-0.5546,-0.5127, &
+    -0.4449,-0.3901,-0.3386,-0.1612,-0.0387, &
+     0.0516,                                  &
+    -0.6449,-0.6352,-0.6255,-0.6159,-0.6062, &  ! Mg=0.0025
+    -0.5965,-0.5868,-0.5772,-0.5675,-0.5598, &
+    -0.5520,-0.5443,-0.5365,-0.5288,-0.4901, &
+    -0.4256,-0.3724,-0.3241,-0.1516,-0.0323, &
+     0.0565,                                  &
+    -0.6094,-0.6008,-0.5922,-0.5836,-0.5746, &  ! Mg=0.0030
+    -0.5656,-0.5565,-0.5475,-0.5385,-0.5314, &
+    -0.5243,-0.5172,-0.5101,-0.5030,-0.4675, &
+    -0.4063,-0.3547,-0.3095,-0.1419,-0.0258, &
+     0.0613,                                  &
+    -0.5836,-0.5755,-0.5675,-0.5594,-0.5510, &  ! Mg=0.0035
+    -0.5426,-0.5343,-0.5259,-0.5175,-0.5107, &
+    -0.5040,-0.4972,-0.4904,-0.4837,-0.4497, &
+    -0.3917,-0.3418,-0.2983,-0.1338,-0.0209, &
+     0.0661,                                  &
+    -0.5578,-0.5503,-0.5427,-0.5352,-0.5275, &  ! Mg=0.0040
+    -0.5197,-0.5120,-0.5042,-0.4965,-0.4901, &
+    -0.4836,-0.4772,-0.4707,-0.4643,-0.4320, &
+    -0.3772,-0.3289,-0.2870,-0.1258,-0.0161, &
+     0.0709,                                  &
+    -0.5384,-0.5309,-0.5234,-0.5159,-0.5088, &  ! Mg=0.0045
+    -0.5017,-0.4946,-0.4875,-0.4804,-0.4739, &
+    -0.4675,-0.4610,-0.4546,-0.4481,-0.4175, &
+    -0.3643,-0.3192,-0.2773,-0.1194,-0.0113, &
+     0.0741,                                  &
+    -0.5191,-0.5116,-0.5040,-0.4965,-0.4901, &  ! Mg=0.0050
+    -0.4836,-0.4772,-0.4707,-0.4643,-0.4578, &
+    -0.4514,-0.4449,-0.4385,-0.4320,-0.4030, &
+    -0.3514,-0.3095,-0.2676,-0.1129,-0.0064, &
+     0.0774,                                  &
+    -0.3966,-0.3912,-0.3859,-0.3805,-0.3753, &  ! Mg=0.0100
+    -0.3702,-0.3650,-0.3599,-0.3547,-0.3502, &
+    -0.3457,-0.3411,-0.3366,-0.3321,-0.3095, &
+    -0.2708,-0.2354,-0.1999,-0.0677, 0.0290, &
+     0.1064,                                  &
+    -0.2741,-0.2698,-0.2655,-0.2612,-0.2573, &  ! Mg=0.0200
+    -0.2534,-0.2496,-0.2457,-0.2418,-0.2386, &
+    -0.2354,-0.2321,-0.2289,-0.2257,-0.2096, &
+    -0.1773,-0.1483,-0.1225,-0.0129, 0.0709, &
+     0.1419,                                  &
+    -0.1064,-0.1043,-0.1021,-0.1000,-0.0974, &  ! Mg=0.0500
+    -0.0948,-0.0923,-0.0897,-0.0871,-0.0852, &
+    -0.0832,-0.0813,-0.0793,-0.0774,-0.0645, &
+    -0.0451,-0.0226,-0.0032, 0.0774, 0.1451, &
+     0.2031,                                  &
+     0.0193, 0.0204, 0.0215, 0.0226, 0.0245, &  ! Mg=0.1000
+     0.0264, 0.0284, 0.0303, 0.0322, 0.0341, &
+     0.0361, 0.0380, 0.0400, 0.0419, 0.0484, &
+     0.0645, 0.0806, 0.0935, 0.1612, 0.2160, &
+     0.2644,                                  &
+     0.1451, 0.1462, 0.1472, 0.1483, 0.1496, &  ! Mg=0.2000
+     0.1509, 0.1522, 0.1535, 0.1548, 0.1561, &
+     0.1574, 0.1586, 0.1599, 0.1612, 0.1677, &
+     0.1805, 0.1902, 0.1999, 0.2515, 0.2934, &
+     0.3353                                   /
+
   IF (TEST0) PRINT *,"TmCorrect" !TEST0
 
-! Find adjustment values
-
-!  PRINT *,OligoConc,SodiumConc,MgConc
+! Clamp concentrations to valid ranges
 
   IF (OligoConc.lt.1e-9) OligoConc=1e-9
   IF (OligoConc.gt.1e-4) OligoConc=1e-4
-
   IF (SodiumConc.gt.1.000) SodiumConc=1.000
-  IF (SodiumConc.le.1.000.and.SodiumConc.gt.0.750) SodiumConc=1.000
-  IF (SodiumConc.le.0.750.and.SodiumConc.gt.0.500) SodiumConc=0.750
-  IF (SodiumConc.le.0.500.and.SodiumConc.gt.0.250) SodiumConc=0.500
-  IF (SodiumConc.le.0.250.and.SodiumConc.gt.0.200) SodiumConc=0.250
-  IF (SodiumConc.le.0.200.and.SodiumConc.gt.0.150) SodiumConc=0.200
-  IF (SodiumConc.le.0.150.and.SodiumConc.gt.0.100) SodiumConc=0.150
-  IF (SodiumConc.le.0.100.and.SodiumConc.gt.0.075) SodiumConc=0.100
-  IF (SodiumConc.le.0.075.and.SodiumConc.gt.0.050) SodiumConc=0.075
-  IF (SodiumConc.le.0.050.and.SodiumConc.gt.0.025) SodiumConc=0.050
-  IF (SodiumConc.le.0.025.and.SodiumConc.gt.0.010) SodiumConc=0.025
-  IF (SodiumConc.le.0.010) SodiumConc=0.010
+  IF (SodiumConc.lt.0.010) SodiumConc=0.010
+  IF (MgConc.gt.0.2000) MgConc=0.2000
+  IF (MgConc.lt.0.0) MgConc=0.0
 
-  IF (MgConc.gt.0.2000) MgConc=0.200
-  IF (MgConc.le.0.2000.and.MgConc.gt.0.1000) MgConc=0.2000
-  IF (MgConc.le.0.1000.and.MgConc.gt.0.0500) MgConc=0.1000
-  IF (MgConc.le.0.0500.and.MgConc.gt.0.0200) MgConc=0.0500
-  IF (MgConc.le.0.0200.and.MgConc.gt.0.0100) MgConc=0.0200
-  IF (MgConc.le.0.0100.and.MgConc.gt.0.0050) MgConc=0.0100
-  IF (MgConc.le.0.0050.and.MgConc.gt.0.0040) MgConc=0.0050
-  IF (MgConc.le.0.0040.and.MgConc.gt.0.0030) MgConc=0.0040
-  IF (MgConc.le.0.0030.and.MgConc.gt.0.0020) MgConc=0.0030
-  IF (MgConc.le.0.0020.and.MgConc.gt.0.0015) MgConc=0.0020
-  IF (MgConc.le.0.0015.and.MgConc.gt.0.0010) MgConc=0.0015
-  IF (MgConc.le.0.0010.and.MgConc.gt.0.0005) MgConc=0.0010
-  IF (MgConc.le.0.0005.and.MgConc.gt.0.0000) MgConc=0.0005
-  IF (MgConc.le.0) MgConc=0
-
-!  PRINT *,OligoConc,SodiumConc,MgConc
+! Compute oligo corrections
 
   OligoCorr=RGasConstant*(LOG(((OligoConc/100)/2)))
   OligoCorrSC=RGasConstant*(LOG((OligoConc/100)))
 
-! Sorry about this, I couldn't figure out the equation.
+! Compute salt correction
 
-  IF (SodiumConc.eq.10.and.MgConc.eq.0.0) SaltCorr=-1.6960
-  IF (SodiumConc.eq.10.and.MgConc.eq.0.5) SaltCorr=-0.9125
-  IF (SodiumConc.eq.10.and.MgConc.eq.1.0) SaltCorr=-0.7996
-  IF (SodiumConc.eq.10.and.MgConc.eq.1.5) SaltCorr=-0.7287
-  IF (SodiumConc.eq.10.and.MgConc.eq.2.0) SaltCorr=-0.6803
-  IF (SodiumConc.eq.10.and.MgConc.eq.3.0) SaltCorr=-0.6094
-  IF (SodiumConc.eq.10.and.MgConc.eq.4.0) SaltCorr=-0.5578
-  IF (SodiumConc.eq.10.and.MgConc.eq.5.0) SaltCorr=-0.5191
-  IF (SodiumConc.eq.10.and.MgConc.eq.10.0) SaltCorr=-0.3966
-  IF (SodiumConc.eq.10.and.MgConc.eq.20.0) SaltCorr=-0.2741
-  IF (SodiumConc.eq.10.and.MgConc.eq.50.0) SaltCorr=-0.1064
-  IF (SodiumConc.eq.10.and.MgConc.eq.100.0) SaltCorr=0.0193
-  IF (SodiumConc.eq.10.and.MgConc.eq.200.0) SaltCorr=0.1451
-  IF (SodiumConc.eq.25.and.MgConc.eq.0.0) SaltCorr=-1.3574
-  IF (SodiumConc.eq.25.and.MgConc.eq.0.5) SaltCorr=-0.8512
-  IF (SodiumConc.eq.25.and.MgConc.eq.1.0) SaltCorr=-0.7545
-  IF (SodiumConc.eq.25.and.MgConc.eq.1.5) SaltCorr=-0.6900
-  IF (SodiumConc.eq.25.and.MgConc.eq.2.0) SaltCorr=-0.6481
-  IF (SodiumConc.eq.25.and.MgConc.eq.3.0) SaltCorr=-0.5836
-  IF (SodiumConc.eq.25.and.MgConc.eq.4.0) SaltCorr=-0.5352
-  IF (SodiumConc.eq.25.and.MgConc.eq.5.0) SaltCorr=-0.4965
-  IF (SodiumConc.eq.25.and.MgConc.eq.10.0) SaltCorr=-0.3805
-  IF (SodiumConc.eq.25.and.MgConc.eq.20.0) SaltCorr=-0.2612
-  IF (SodiumConc.eq.25.and.MgConc.eq.50.0) SaltCorr=-0.1000
-  IF (SodiumConc.eq.25.and.MgConc.eq.100.0) SaltCorr=0.0226
-  IF (SodiumConc.eq.25.and.MgConc.eq.200.0) SaltCorr=0.1483
-  IF (SodiumConc.eq.50.and.MgConc.eq.0.0) SaltCorr=-1.1027
-  IF (SodiumConc.eq.50.and.MgConc.eq.0.5) SaltCorr=-0.7706
-  IF (SodiumConc.eq.50.and.MgConc.eq.1.0) SaltCorr=-0.6868
-  IF (SodiumConc.eq.50.and.MgConc.eq.1.5) SaltCorr=-0.6352
-  IF (SodiumConc.eq.50.and.MgConc.eq.2.0) SaltCorr=-0.5965
-  IF (SodiumConc.eq.50.and.MgConc.eq.3.0) SaltCorr=-0.5385
-  IF (SodiumConc.eq.50.and.MgConc.eq.4.0) SaltCorr=-0.4965
-  IF (SodiumConc.eq.50.and.MgConc.eq.5.0) SaltCorr=-0.4643
-  IF (SodiumConc.eq.50.and.MgConc.eq.10.0) SaltCorr=-0.3547
-  IF (SodiumConc.eq.50.and.MgConc.eq.20.0) SaltCorr=-0.2418
-  IF (SodiumConc.eq.50.and.MgConc.eq.50.0) SaltCorr=-0.0871
-  IF (SodiumConc.eq.50.and.MgConc.eq.100.0) SaltCorr=0.0322
-  IF (SodiumConc.eq.50.and.MgConc.eq.200.0) SaltCorr=0.1548
-  IF (SodiumConc.eq.75.and.MgConc.eq.0.0) SaltCorr=-0.9544
-  IF (SodiumConc.eq.75.and.MgConc.eq.0.5) SaltCorr=-0.6997
-  IF (SodiumConc.eq.75.and.MgConc.eq.1.0) SaltCorr=-0.6320
-  IF (SodiumConc.eq.75.and.MgConc.eq.1.5) SaltCorr=-0.5868
-  IF (SodiumConc.eq.75.and.MgConc.eq.2.0) SaltCorr=-0.5546
-  IF (SodiumConc.eq.75.and.MgConc.eq.3.0) SaltCorr=-0.5030
-  IF (SodiumConc.eq.75.and.MgConc.eq.4.0) SaltCorr=-0.4643
-  IF (SodiumConc.eq.75.and.MgConc.eq.5.0) SaltCorr=-0.4320
-  IF (SodiumConc.eq.75.and.MgConc.eq.10.0) SaltCorr=-0.3321
-  IF (SodiumConc.eq.75.and.MgConc.eq.20.0) SaltCorr=-0.2257
-  IF (SodiumConc.eq.75.and.MgConc.eq.50.0) SaltCorr=-0.0774
-  IF (SodiumConc.eq.75.and.MgConc.eq.100.0) SaltCorr=0.0419
-  IF (SodiumConc.eq.75.and.MgConc.eq.200.0) SaltCorr=0.1612
-  IF (SodiumConc.eq.100.and.MgConc.eq.0.0) SaltCorr=-0.8480
-  IF (SodiumConc.eq.100.and.MgConc.eq.0.5) SaltCorr=-0.6449
-  IF (SodiumConc.eq.100.and.MgConc.eq.1.0) SaltCorr=-0.5836
-  IF (SodiumConc.eq.100.and.MgConc.eq.1.5) SaltCorr=-0.5449
-  IF (SodiumConc.eq.100.and.MgConc.eq.2.0) SaltCorr=-0.5127
-  IF (SodiumConc.eq.100.and.MgConc.eq.3.0) SaltCorr=-0.4675
-  IF (SodiumConc.eq.100.and.MgConc.eq.4.0) SaltCorr=-0.4320
-  IF (SodiumConc.eq.100.and.MgConc.eq.5.0) SaltCorr=-0.4030
-  IF (SodiumConc.eq.100.and.MgConc.eq.10.0) SaltCorr=-0.3095
-  IF (SodiumConc.eq.100.and.MgConc.eq.20.0) SaltCorr=-0.2096
-  IF (SodiumConc.eq.100.and.MgConc.eq.50.0) SaltCorr=-0.0645
-  IF (SodiumConc.eq.100.and.MgConc.eq.100.0) SaltCorr=0.0484
-  IF (SodiumConc.eq.100.and.MgConc.eq.200.0) SaltCorr=0.1677
-  IF (SodiumConc.eq.150.and.MgConc.eq.0.0) SaltCorr=-0.6964
-  IF (SodiumConc.eq.150.and.MgConc.eq.0.5) SaltCorr=-0.5514
-  IF (SodiumConc.eq.150.and.MgConc.eq.1.0) SaltCorr=-0.5030
-  IF (SodiumConc.eq.150.and.MgConc.eq.1.5) SaltCorr=-0.4707
-  IF (SodiumConc.eq.150.and.MgConc.eq.2.0) SaltCorr=-0.4449
-  IF (SodiumConc.eq.150.and.MgConc.eq.3.0) SaltCorr=-0.4063
-  IF (SodiumConc.eq.150.and.MgConc.eq.4.0) SaltCorr=-0.3772
-  IF (SodiumConc.eq.150.and.MgConc.eq.5.0) SaltCorr=-0.3514
-  IF (SodiumConc.eq.150.and.MgConc.eq.10.0) SaltCorr=-0.2708
-  IF (SodiumConc.eq.150.and.MgConc.eq.20.0) SaltCorr=-0.1773
-  IF (SodiumConc.eq.150.and.MgConc.eq.50.0) SaltCorr=-0.0451
-  IF (SodiumConc.eq.150.and.MgConc.eq.100.0) SaltCorr=0.0645
-  IF (SodiumConc.eq.150.and.MgConc.eq.200.0) SaltCorr=0.1805
-  IF (SodiumConc.eq.200.and.MgConc.eq.0.0) SaltCorr=-0.5933
-  IF (SodiumConc.eq.200.and.MgConc.eq.0.5) SaltCorr=-0.4772
-  IF (SodiumConc.eq.200.and.MgConc.eq.1.0) SaltCorr=-0.4385
-  IF (SodiumConc.eq.200.and.MgConc.eq.1.5) SaltCorr=-0.4095
-  IF (SodiumConc.eq.200.and.MgConc.eq.2.0) SaltCorr=-0.3901
-  IF (SodiumConc.eq.200.and.MgConc.eq.3.0) SaltCorr=-0.3547
-  IF (SodiumConc.eq.200.and.MgConc.eq.4.0) SaltCorr=-0.3289
-  IF (SodiumConc.eq.200.and.MgConc.eq.5.0) SaltCorr=-0.3095
-  IF (SodiumConc.eq.200.and.MgConc.eq.10.0) SaltCorr=-0.2354
-  IF (SodiumConc.eq.200.and.MgConc.eq.20.0) SaltCorr=-0.1483
-  IF (SodiumConc.eq.200.and.MgConc.eq.50.0) SaltCorr=-0.0226
-  IF (SodiumConc.eq.200.and.MgConc.eq.100.0) SaltCorr=0.0806
-  IF (SodiumConc.eq.200.and.MgConc.eq.200.0) SaltCorr=0.1902
-  IF (SodiumConc.eq.250.and.MgConc.eq.0.0) SaltCorr=-0.5094
-  IF (SodiumConc.eq.250.and.MgConc.eq.0.5) SaltCorr=-0.4159
-  IF (SodiumConc.eq.250.and.MgConc.eq.1.0) SaltCorr=-0.3805
-  IF (SodiumConc.eq.250.and.MgConc.eq.1.5) SaltCorr=-0.3579
-  IF (SodiumConc.eq.250.and.MgConc.eq.2.0) SaltCorr=-0.3386
-  IF (SodiumConc.eq.250.and.MgConc.eq.3.0) SaltCorr=-0.3095
-  IF (SodiumConc.eq.250.and.MgConc.eq.4.0) SaltCorr=-0.2870
-  IF (SodiumConc.eq.250.and.MgConc.eq.5.0) SaltCorr=-0.2676
-  IF (SodiumConc.eq.250.and.MgConc.eq.10.0) SaltCorr=-0.1999
-  IF (SodiumConc.eq.250.and.MgConc.eq.20.0) SaltCorr=-0.1225
-  IF (SodiumConc.eq.250.and.MgConc.eq.50.0) SaltCorr=-0.0032
-  IF (SodiumConc.eq.250.and.MgConc.eq.100.0) SaltCorr=0.0935
-  IF (SodiumConc.eq.250.and.MgConc.eq.200.0) SaltCorr=0.1999
-  IF (SodiumConc.eq.500.and.MgConc.eq.0.0) SaltCorr=-0.2547
-  IF (SodiumConc.eq.500.and.MgConc.eq.0.5) SaltCorr=-0.2031
-  IF (SodiumConc.eq.500.and.MgConc.eq.1.0) SaltCorr=-0.1838
-  IF (SodiumConc.eq.500.and.MgConc.eq.1.5) SaltCorr=-0.1709
-  IF (SodiumConc.eq.500.and.MgConc.eq.2.0) SaltCorr=-0.1612
-  IF (SodiumConc.eq.500.and.MgConc.eq.3.0) SaltCorr=-0.1419
-  IF (SodiumConc.eq.500.and.MgConc.eq.4.0) SaltCorr=-0.1258
-  IF (SodiumConc.eq.500.and.MgConc.eq.5.0) SaltCorr=-0.1129
-  IF (SodiumConc.eq.500.and.MgConc.eq.10.0) SaltCorr=-0.0677
-  IF (SodiumConc.eq.500.and.MgConc.eq.20.0) SaltCorr=-0.0129
-  IF (SodiumConc.eq.500.and.MgConc.eq.50.0) SaltCorr=0.0774
-  IF (SodiumConc.eq.500.and.MgConc.eq.100.0) SaltCorr=0.1612
-  IF (SodiumConc.eq.500.and.MgConc.eq.200.0) SaltCorr=0.2515
-  IF (SodiumConc.eq.750.and.MgConc.eq.0.0) SaltCorr=-0.1064
-  IF (SodiumConc.eq.750.and.MgConc.eq.0.5) SaltCorr=-0.0709
-  IF (SodiumConc.eq.750.and.MgConc.eq.1.0) SaltCorr=-0.0580
-  IF (SodiumConc.eq.750.and.MgConc.eq.1.5) SaltCorr=-0.0484
-  IF (SodiumConc.eq.750.and.MgConc.eq.2.0) SaltCorr=-0.0387
-  IF (SodiumConc.eq.750.and.MgConc.eq.3.0) SaltCorr=-0.0258
-  IF (SodiumConc.eq.750.and.MgConc.eq.4.0) SaltCorr=-0.0161
-  IF (SodiumConc.eq.750.and.MgConc.eq.5.0) SaltCorr=-0.0064
-  IF (SodiumConc.eq.750.and.MgConc.eq.10.0) SaltCorr=0.0290
-  IF (SodiumConc.eq.750.and.MgConc.eq.20.0) SaltCorr=0.0709
-  IF (SodiumConc.eq.750.and.MgConc.eq.50.0) SaltCorr=0.1451
-  IF (SodiumConc.eq.750.and.MgConc.eq.100.0) SaltCorr=0.2160
-  IF (SodiumConc.eq.750.and.MgConc.eq.200.0) SaltCorr=0.2934
-  IF (SodiumConc.eq.1000.and.MgConc.eq.0.0) SaltCorr=0.0000
-  IF (SodiumConc.eq.1000.and.MgConc.eq.0.5) SaltCorr=0.0258
-  IF (SodiumConc.eq.1000.and.MgConc.eq.1.0) SaltCorr=0.0355
-  IF (SodiumConc.eq.1000.and.MgConc.eq.1.5) SaltCorr=0.0451
-  IF (SodiumConc.eq.1000.and.MgConc.eq.2.0) SaltCorr=0.0516
-  IF (SodiumConc.eq.1000.and.MgConc.eq.3.0) SaltCorr=0.0613
-  IF (SodiumConc.eq.1000.and.MgConc.eq.4.0) SaltCorr=0.0709
-  IF (SodiumConc.eq.1000.and.MgConc.eq.5.0) SaltCorr=0.0774
-  IF (SodiumConc.eq.1000.and.MgConc.eq.10.0) SaltCorr=0.1064
-  IF (SodiumConc.eq.1000.and.MgConc.eq.20.0) SaltCorr=0.1419
-  IF (SodiumConc.eq.1000.and.MgConc.eq.50.0) SaltCorr=0.2031
-  IF (SodiumConc.eq.1000.and.MgConc.eq.100.0) SaltCorr=0.2644
-  IF (SodiumConc.eq.1000.and.MgConc.eq.200.0) SaltCorr=0.3353
+  IF (SLOW) THEN
+!   Exact calculation: SantaLucia (1998) monovalent correction with
+!   von Ahsen et al. (2001) Mg2+ equivalent ionic strength.
+!   SaltCorr = 0.368 * ln([Na+] + 3.3 * sqrt([Mg2+]))
+    SaltCorr = 0.368 * LOG(SodiumConc + 3.3 * SQRT(MgConc))
+  ELSE
+!   Snap to nearest table level and look up
+    si = 1
+    best_dist = ABS(SodiumConc - na_lvl(1))
+    DO i = 2, 21
+      dist = ABS(SodiumConc - na_lvl(i))
+      IF (dist .lt. best_dist) THEN
+        best_dist = dist
+        si = i
+      END IF
+    END DO
+    SodiumConc = na_lvl(si)
+
+    mi = 1
+    best_dist = ABS(MgConc - mg_lvl(1))
+    DO i = 2, 16
+      dist = ABS(MgConc - mg_lvl(i))
+      IF (dist .lt. best_dist) THEN
+        best_dist = dist
+        mi = i
+      END IF
+    END DO
+    MgConc = mg_lvl(mi)
+
+    SaltCorr = salt_table(si, mi)
+  END IF
 
 END SUBROUTINE TmCorrect
